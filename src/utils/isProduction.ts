@@ -1,1 +1,1 @@
-export default () => process.env.NETWORK === 'production'
+export default () => process.env.APP_ENV === 'production'

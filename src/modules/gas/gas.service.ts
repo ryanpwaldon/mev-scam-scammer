@@ -1,20 +1,17 @@
-import log from 'src/utils/log'
-import { GWEI } from 'src/constants'
 import { Injectable } from '@nestjs/common'
 import axios, { AxiosInstance } from 'axios'
 import { parseUnits } from '@ethersproject/units'
 import { BigNumber } from '@ethersproject/bignumber'
+import log from 'src/utils/log'
 import prettifyNumber from 'src/utils/prettifyNumber'
 
-const MAX_FEE_PER_GAS_MULTIPLIER = 2
-const MAX_PRIORITY_FEE_PER_GAS_MULTIPLIER = 20
+const GWEI = BigNumber.from(10).pow(9)
 
 @Injectable()
 export class GasService {
-  private started = false
   private client: AxiosInstance
-  private reasonableMaxFeePerGas!: BigNumber
-  private reasonableMaxPriorityFeePerGas!: BigNumber
+  baseFeePerGas!: BigNumber
+  maxPriorityFeePerGas!: BigNumber
 
   constructor() {
     this.client = axios.create({
@@ -23,31 +20,26 @@ export class GasService {
     })
   }
 
-  start() {
-    if (this.started) return
+  async start() {
     console.log(`⛽️ Gas Monitor: Started`)
-    setInterval(this.updateReasonableGasPrice.bind(this), 1500)
-    setInterval(() => log([
-      `⛽️ Gas: Priority Fee: ${prettifyNumber(this.reasonableMaxPriorityFeePerGas.div(GWEI))} gwei`,
-      `⛽️ Gas: Max Fee: ${prettifyNumber(this.reasonableMaxFeePerGas.div(GWEI))} gwei`,
-    ]), 60000) // prettier-ignore
-    this.started = true
+    await this.updateGasEstimate()
+    setInterval(this.updateGasEstimate.bind(this), 1500)
   }
 
-  async updateReasonableGasPrice() {
-    try {
-      const { maxPriorityFeePerGas, maxFeePerGas } = ((await this.client({ method: 'get' })) as any).data.blockPrices[0].estimatedPrices[0]
-      this.reasonableMaxPriorityFeePerGas = parseUnits(maxPriorityFeePerGas.toString(), 'gwei').mul(MAX_PRIORITY_FEE_PER_GAS_MULTIPLIER)
-      this.reasonableMaxFeePerGas = parseUnits(maxFeePerGas.toString(), 'gwei').mul(MAX_FEE_PER_GAS_MULTIPLIER)
-    } catch (err) {
-      console.log(`🔴 Gas Monitor: Error fetching data`, err)
-    }
+  async updateGasEstimate() {
+    const data = (await this.client({ method: 'get' })).data as any
+    this.baseFeePerGas = parseUnits(data.blockPrices[0].baseFeePerGas.toString(), 'gwei')
+    this.maxPriorityFeePerGas = parseUnits(data.blockPrices[0].estimatedPrices[0].maxPriorityFeePerGas.toString(), 'gwei')
   }
 
-  getReasonableFeePerGas() {
+  getGasEstimate() {
+    log([
+      `⛽️ Gas: Base Fee: ${prettifyNumber(this.baseFeePerGas.div(GWEI))} gwei`,
+      `⛽️ Gas: Max Fee: ${prettifyNumber(this.maxPriorityFeePerGas.div(GWEI))} gwei`,
+    ])
     return {
-      reasonableMaxFeePerGas: this.reasonableMaxFeePerGas,
-      reasonableMaxPriorityFeePerGas: this.reasonableMaxPriorityFeePerGas,
+      baseFeePerGas: this.baseFeePerGas,
+      maxPriorityFeePerGas: this.maxPriorityFeePerGas,
     }
   }
 }

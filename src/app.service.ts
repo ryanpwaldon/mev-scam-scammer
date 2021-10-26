@@ -6,16 +6,15 @@ import { ExecutorService } from 'src/modules/executor/executor.service'
 @Injectable()
 export class AppService implements OnApplicationBootstrap {
   constructor(
-    private readonly gasService: GasService,
     private readonly blockService: BlockService,
     private readonly executorService: ExecutorService,
+    private readonly gasService: GasService,
   ) {}
 
-  onApplicationBootstrap() {
-    setTimeout(async () => {
-      this.gasService.start()
-      this.executorService.start()
-      this.blockService.start()
-    }, 1000)
+  async onApplicationBootstrap() {
+    await this.executorService.start()
+    await this.gasService.start()
+    this.blockService.startBloxroute()
+    this.executorService.execute()
   }
 }
