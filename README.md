@@ -1,3 +1,3 @@
-# Scam Scammer
+# MEV Scam Scammer
 
-Utilize flashbots sponsored transactions to drain a honeypot before bots have the opportunity to sweep funds.
+Flashbots strategy developed to drain a scammer's honeypot (compromised wallet) with a balance of $200 tether and 0 ether.
